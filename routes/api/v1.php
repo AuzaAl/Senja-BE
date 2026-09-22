@@ -40,6 +40,7 @@ Route::prefix('auth')->group(function () {
 
 // --- Admin content management (CMS) ---
 Route::middleware('auth:api')->group(function () {
+    // Route::post('/uploads', [UploadController::class, 'store']);
     // Route::get('/hero', [HeroController::class, 'show']);
     // Route::put('/hero', [HeroController::class, 'update']);
     //
