@@ -26,10 +26,12 @@ Route::get('/health', fn () => response()->json([
     'version' => 'v1',
 ]));
 
-// --- Auth (Passport) ---
+// --- Auth (Passport) — brute-force protected ---
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/refresh', [AuthController::class, 'refresh']);
+    });
 
     Route::middleware('auth:api')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
@@ -47,7 +49,9 @@ Route::get('/partners/{partner:slug}', [PartnerController::class, 'show']);
 Route::get('/projects', [ProjectController::class, 'index']);
 Route::get('/projects/{project:slug}', [ProjectController::class, 'show']);
 
-Route::post('/contact-inquiries', [ContactInquiryController::class, 'store']);
+Route::middleware('throttle:30,1')->group(function () {
+    Route::post('/contact-inquiries', [ContactInquiryController::class, 'store']);
+});
 
 // --- Admin content management (CMS) ---
 Route::middleware(['auth:api', 'permission:uploads.create'])->group(function () {
@@ -56,11 +60,11 @@ Route::middleware(['auth:api', 'permission:uploads.create'])->group(function () 
 
 Route::middleware('auth:api')->group(function () {
     Route::middleware('permission:hero.update')->group(function () {
-        Route::put('/hero', [HeroController::class, 'update']);
+        Route::match(['put', 'patch'], '/hero', [HeroController::class, 'update']);
     });
 
     Route::middleware('permission:about.update')->group(function () {
-        Route::put('/about', [AboutController::class, 'update']);
+        Route::match(['put', 'patch'], '/about', [AboutController::class, 'update']);
     });
 
     Route::middleware('permission:partners.create')->group(function () {
@@ -68,11 +72,11 @@ Route::middleware('auth:api')->group(function () {
     });
 
     Route::middleware('permission:partners.update')->group(function () {
-        Route::match(['put', 'patch'], '/partners/{partner}', [PartnerController::class, 'update']);
+        Route::match(['put', 'patch'], '/partners/{partner:slug}', [PartnerController::class, 'update']);
     });
 
     Route::middleware('permission:partners.delete')->group(function () {
-        Route::delete('/partners/{partner}', [PartnerController::class, 'destroy']);
+        Route::delete('/partners/{partner:slug}', [PartnerController::class, 'destroy']);
     });
 
     Route::middleware('permission:projects.create')->group(function () {
@@ -80,15 +84,16 @@ Route::middleware('auth:api')->group(function () {
     });
 
     Route::middleware('permission:projects.update')->group(function () {
-        Route::match(['put', 'patch'], '/projects/{project}', [ProjectController::class, 'update']);
+        Route::match(['put', 'patch'], '/projects/{project:slug}', [ProjectController::class, 'update']);
     });
 
     Route::middleware('permission:projects.delete')->group(function () {
-        Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
+        Route::delete('/projects/{project:slug}', [ProjectController::class, 'destroy']);
     });
 
     Route::middleware('permission:contact-inquiries.view')->group(function () {
         Route::get('/contact-inquiries', [ContactInquiryController::class, 'index']);
+        Route::match(['put', 'patch'], '/contact-inquiries/{inquiry}', [ContactInquiryController::class, 'update']);
     });
 
     Route::middleware('permission:contact-inquiries.delete')->group(function () {

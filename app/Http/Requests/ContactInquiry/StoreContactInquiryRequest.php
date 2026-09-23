@@ -26,4 +26,12 @@ class StoreContactInquiryRequest extends FormRequest
             'message' => ['required', 'string', 'max:10000'],
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        // FE/CMS send camelCase projectType — normalize to snake_case.
+        if ($this->has('projectType') && ! $this->has('project_type')) {
+            $this->merge(['project_type' => $this->input('projectType')]);
+        }
+    }
 }

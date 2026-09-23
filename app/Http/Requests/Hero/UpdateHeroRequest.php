@@ -22,7 +22,8 @@ class UpdateHeroRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:1000'],
             'button_label' => ['nullable', 'string', 'max:255'],
-            'button_link' => ['nullable', 'string', 'max:2048', 'url'],
+            // FE/CMS use anchors (e.g. "#solutions") and relative paths — accept any non-empty string.
+            'button_link' => ['nullable', 'string', 'max:2048'],
             'images' => ['nullable', 'array'],
             'images.*' => [$this->imageOrPathRule()],
             'images.*.image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
@@ -31,8 +32,24 @@ class UpdateHeroRequest extends FormRequest
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        // CMS sends images as string[] — normalize to [{image_path, alt}] for validation.
+        $images = $this->input('images');
+
+        if (is_array($images)) {
+            $normalized = array_map(
+                fn ($item) => is_string($item) ? ['image_path' => $item] : $item,
+                $images
+            );
+
+            $this->merge(['images' => $normalized]);
+        }
+    }
+
     /**
-     * A gallery item must carry either an uploaded file or an existing path.
+     * A gallery item must carry either an uploaded file, an existing path,
+     * or a plain string path (normalized above).
      */
     private function imageOrPathRule(): Closure
     {

@@ -46,6 +46,7 @@ if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
     echo "[senja-be] Generating Passport encryption keys..."
     php artisan passport:keys --force
 fi
+chmod 600 storage/oauth-*.key 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # 4. Application key — must be provided via env in production.

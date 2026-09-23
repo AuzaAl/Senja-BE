@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A business partner shown on the landing page, with a gallery and products.
  */
-#[Fillable(['name', 'slug', 'logo', 'description', 'website', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'slug', 'number', 'category', 'logo', 'description', 'capabilities', 'relationship', 'relationship_detail', 'hero_image', 'website', 'sort_order', 'is_active'])]
 class Partner extends Model
 {
     /** @use HasFactory<PartnerFactory> */
@@ -43,6 +43,14 @@ class Partner extends Model
     }
 
     /**
+     * Use slug for route model binding (public + admin share /{partner:slug}).
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -51,6 +59,7 @@ class Partner extends Model
     {
         return [
             'is_active' => 'boolean',
+            'capabilities' => 'array',
         ];
     }
 }

@@ -113,7 +113,7 @@ class PartnerTest extends TestCase
         Passport::actingAs($this->userWithRole('admin'), [], 'api');
         $partner = Partner::factory()->create();
 
-        $this->putJson("/api/v1/partners/{$partner->id}", $this->payload(['name' => 'Senyap Studio']))
+        $this->putJson("/api/v1/partners/{$partner->slug}", $this->payload(['name' => 'Senyap Studio']))
             ->assertOk()
             ->assertJsonPath('data.name', 'Senyap Studio');
 
@@ -125,7 +125,7 @@ class PartnerTest extends TestCase
         Passport::actingAs($this->userWithRole('admin'), [], 'api');
         $partner = Partner::factory()->create();
 
-        $this->deleteJson("/api/v1/partners/{$partner->id}")
+        $this->deleteJson("/api/v1/partners/{$partner->slug}")
             ->assertOk()
             ->assertJsonPath('message', 'Partner berhasil dihapus.');
 

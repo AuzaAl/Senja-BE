@@ -1,0 +1,683 @@
+openapi: 3.0.3
+info:
+  title: Senja PKL API
+  description: API v1 untuk Website Profil Senja dan Content Management System (CMS).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+  - url: https://staging-api.senja.sabirudigital.id/api/v1
+    description: Staging Server
+  - url: https://api.senja.sabirudigital.id/api/v1
+    description: Production Server
+
+tags:
+  - name: System
+    description: Health check and status
+  - name: Authentication
+    description: OAuth2 Passport authentication endpoints
+  - name: Public Content
+    description: Endpoints consumed by public landing page
+  - name: CMS Admin
+    description: Protected content management endpoints
+  - name: User Management
+    description: RBAC and user administration
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    ImageRef:
+      type: object
+      properties:
+        src:
+          type: string
+        alt:
+          type: string
+        path:
+          type: string
+
+    HeroData:
+      type: object
+      properties:
+        eyebrow:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        button_label:
+          type: string
+        button_link:
+          type: string
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageRef'
+
+    AboutData:
+      type: object
+      properties:
+        hero:
+          type: object
+        story:
+          type: object
+        quote:
+          type: object
+        principles:
+          type: object
+        capabilities:
+          type: object
+        process:
+          type: object
+
+    ProjectItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        number:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        location:
+          type: string
+        year:
+          type: string
+        client:
+          type: string
+        image:
+          type: string
+        description:
+          type: string
+        overview:
+          type: string
+        challenge:
+          type: string
+        solution:
+          type: string
+        services:
+          type: array
+          items:
+            type: string
+        stats:
+          type: array
+          items:
+            type: object
+        partners:
+          type: array
+          items:
+            type: object
+        gallery:
+          type: array
+          items:
+            type: object
+        featured:
+          type: boolean
+
+    PartnerItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        number:
+          type: string
+        name:
+          type: string
+        image:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        relationship:
+          type: string
+        relationship_detail:
+          type: string
+        hero_image:
+          type: string
+        gallery:
+          type: array
+          items:
+            type: object
+        products:
+          type: array
+          items:
+            type: object
+
+    ContactInquiry:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+        project_type:
+          type: string
+        timeline:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [pending, reviewed, responded, archived]
+        created_at:
+          type: string
+          format: date-time
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service is healthy
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful with access_token and refresh_token
+        '401':
+          description: Invalid credentials
+        '429':
+          description: Too many login attempts
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+        '401':
+          description: Invalid or expired refresh token
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get authenticated user profile and roles
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke current user token
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /hero:
+    get:
+      tags: [Public Content]
+      summary: Get hero section data
+      responses:
+        '200':
+          description: Hero section content
+    put:
+      tags: [CMS Admin]
+      summary: Update hero section content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeroData'
+      responses:
+        '200':
+          description: Hero updated successfully
+
+  /about:
+    get:
+      tags: [Public Content]
+      summary: Get about section/page data
+      responses:
+        '200':
+          description: About page content
+    put:
+      tags: [CMS Admin]
+      summary: Update about section/page content
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AboutData'
+      responses:
+        '200':
+          description: About updated successfully
+
+  /partners:
+    get:
+      tags: [Public Content]
+      summary: List all technology partners
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated partner list
+    post:
+      tags: [CMS Admin]
+      summary: Create new partner
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerItem'
+      responses:
+        '201':
+          description: Partner created
+
+  /partners/{slug}:
+    get:
+      tags: [Public Content]
+      summary: Get partner detail by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Partner detail
+        '404':
+          description: Partner not found
+    put:
+      tags: [CMS Admin]
+      summary: Update partner by slug
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerItem'
+      responses:
+        '200':
+          description: Partner updated
+    delete:
+      tags: [CMS Admin]
+      summary: Delete partner
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Partner deleted
+
+  /projects:
+    get:
+      tags: [Public Content]
+      summary: List all projects
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Paginated project list
+    post:
+      tags: [CMS Admin]
+      summary: Create new project
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectItem'
+      responses:
+        '201':
+          description: Project created
+
+  /projects/{slug}:
+    get:
+      tags: [Public Content]
+      summary: Get project detail by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project detail
+        '404':
+          description: Project not found
+    put:
+      tags: [CMS Admin]
+      summary: Update project by slug
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectItem'
+      responses:
+        '200':
+          description: Project updated
+    delete:
+      tags: [CMS Admin]
+      summary: Delete project
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Project deleted
+
+  /contact-inquiries:
+    post:
+      tags: [Public Content]
+      summary: Submit contact inquiry from landing page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, message]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                company:
+                  type: string
+                phone:
+                  type: string
+                project_type:
+                  type: string
+                timeline:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Inquiry stored successfully
+    get:
+      tags: [CMS Admin]
+      summary: List all contact inquiries
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of contact inquiries
+
+  /contact-inquiries/{id}:
+    put:
+      tags: [CMS Admin]
+      summary: Update inquiry status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, reviewed, responded, archived]
+      responses:
+        '200':
+          description: Inquiry status updated
+    delete:
+      tags: [CMS Admin]
+      summary: Delete contact inquiry
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Inquiry deleted
+
+  /uploads:
+    post:
+      tags: [CMS Admin]
+      summary: Upload file or image
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                folder:
+                  type: string
+      responses:
+        '201':
+          description: File uploaded, returns path and url
+
+  /users:
+    get:
+      tags: [User Management]
+      summary: List users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of users
+    post:
+      tags: [User Management]
+      summary: Create new user
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: User created
+
+  /users/{id}:
+    get:
+      tags: [User Management]
+      summary: Get user detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User detail
+    put:
+      tags: [User Management]
+      summary: Update user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User updated
+    delete:
+      tags: [User Management]
+      summary: Delete user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: User deleted
+
+  /users/{id}/roles:
+    post:
+      tags: [User Management]
+      summary: Assign roles to user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Role assigned
+    delete:
+      tags: [User Management]
+      summary: Revoke roles from user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Role revoked

@@ -49,19 +49,29 @@ class HeroController extends Controller
 
     /**
      * Persist uploaded images, falling back to previously uploaded paths.
+     * Accepts object items, plain string paths, and FE `src` alias.
      *
-     * @param  array<int, array<string, mixed>>  $images
+     * @param  array<int, array<string, mixed>|string>  $images
      * @return array<int, array{path: ?string, alt: ?string}>
      */
     private function normalizeImages(array $images): array
     {
         return collect($images)
-            ->map(fn (array $item): array => [
-                'path' => ! empty($item['image'])
-                    ? ImageUploader::store($item['image'], 'uploads')
-                    : ($item['image_path'] ?? null),
-                'alt' => $item['alt'] ?? null,
-            ])
+            ->map(function ($item): array {
+                if (is_string($item)) {
+                    return ['path' => $item, 'alt' => null];
+                }
+
+                $file = $item['image'] ?? null;
+                $path = $file instanceof \Illuminate\Http\UploadedFile
+                    ? ImageUploader::store($file, 'uploads')
+                    : ($item['image_path'] ?? $item['src'] ?? $item['path'] ?? null);
+
+                return [
+                    'path' => $path,
+                    'alt' => $item['alt'] ?? null,
+                ];
+            })
             ->values()
             ->all();
     }

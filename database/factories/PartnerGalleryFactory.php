@@ -22,6 +22,7 @@ class PartnerGalleryFactory extends Factory
             'partner_id' => Partner::factory(),
             'image_path' => 'images/partner-gallery-'.$this->faker->numberBetween(1, 5).'.jpg',
             'alt' => $this->faker->sentence(2),
+            'position' => null,
             'sort_order' => $this->faker->numberBetween(0, 10),
         ];
     }

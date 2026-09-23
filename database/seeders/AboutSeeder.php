@@ -11,42 +11,63 @@ class AboutSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the homepage about section (singleton row).
+     * Seed the About page (singleton row) — mirrors FE AboutPage + CMS defaultAboutContent.
      */
     public function run(): void
     {
         About::updateOrCreate(['id' => 1], [
             'hero' => [
-                'title' => 'Sebuah studio yang lahir saat senja',
-                'subtitle' => 'Kami percaya ide terbaik muncul di antara chaos dan fokus — di sanalah kami bekerja.',
-                'image' => 'https://picsum.photos/seed/about-senja/1200/800',
+                'eyebrow' => 'About Senja · Jakarta, Indonesia',
+                'title' => 'Technology, made to feel human.',
+                'description' => 'We design and integrate connected spaces where technology feels intuitive, purposeful, and quietly powerful.',
+                'image' => ['src' => '/images/about.png', 'alt' => 'A connected Senja learning and collaboration environment'],
             ],
             'story' => [
-                'title' => 'Cerita kami',
+                'eyebrow' => 'Why we exist',
+                'title' => "A better space doesn't ask people to understand the technology. It understands them.",
                 'paragraphs' => [
-                    'Senja dimulai dari sekelompok desainer dan pengembang yang jenuh dengan hasil kerja biasa-biasa saja.',
-                    'Sejak itu kami membantu brand membangun identitas, produk digital, dan cerita yang berkesan.',
+                    'Senja brings technology, spatial thinking, and human needs into one integrated experience. We work across the entire journey—from the first conversation and system design to installation and long-term support.',
+                    'The result is not a collection of devices. It is a space where ideas move more freely, teams collaborate naturally, and every interaction feels considered.',
                 ],
+                'stats' => [
+                    ['value' => '50+', 'label' => 'Spaces transformed'],
+                    ['value' => '12', 'label' => 'Technology partners'],
+                    ['value' => '04', 'label' => 'Industries served'],
+                ],
+                'image' => ['src' => '/images/bg-hero.png', 'alt' => 'Modern connected meeting space'],
             ],
             'quote' => [
-                'text' => 'Kami tidak sekadar membuat yang indah. Kami membuat yang bekerja.',
-                'author' => 'Tim Senja',
+                'eyebrow' => 'Our point of view',
+                'text' => "The best technology doesn't take over the room. It gives the room more possibility.",
             ],
             'principles' => [
-                ['title' => 'Kejelasan', 'description' => 'Setiap keputusan punya alasan yang jelas.'],
-                ['title' => 'Keberanian', 'description' => 'Kami berani mencoba hal baru dan belajar cepat.'],
-                ['title' => 'Ketelitian', 'description' => 'Detail kecil adalah bagian dari kualitas besar.'],
+                'eyebrow' => 'What guides us',
+                'title' => 'Our principles',
+                'description' => 'Simple ideas that shape every space we create.',
+                'items' => [
+                    ['title' => 'Human first', 'description' => 'Technology should disappear into the experience. Every decision begins with the people who will use the space.'],
+                    ['title' => 'Built as one', 'description' => 'Design, hardware, software, and support are considered together so every touchpoint feels clear and connected.'],
+                    ['title' => 'Ready for change', 'description' => 'We create adaptable systems that can grow with new teams, new tools, and the next way of working.'],
+                ],
             ],
             'capabilities' => [
-                ['title' => 'Brand Identity', 'description' => 'Identitas visual yang konsisten dan berkarakter.'],
-                ['title' => 'Product Design', 'description' => 'Antarmuka dan pengalaman produk digital.'],
-                ['title' => 'Development', 'description' => 'Kode bersih, cepat, dan mudah dikelola.'],
+                'eyebrow' => 'What we connect',
+                'title' => 'One partner. Every layer.',
+                'description' => 'From a single meeting room to an entire connected workplace, we make every layer work together as one clear experience.',
+                'visualLabel' => 'Spaces / systems / experiences',
+                'services' => ['Workplace collaboration', 'Digital signage', 'Learning environments', 'Network infrastructure', 'Experience design', 'Lifecycle support'],
+                'image' => ['src' => '/images/solution.png', 'alt' => 'Integrated meeting room technology'],
             ],
             'process' => [
-                ['step' => 1, 'title' => 'Discover', 'description' => 'Memahami masalah, audiens, dan tujuan.'],
-                ['step' => 2, 'title' => 'Define', 'description' => 'Merumuskan strategi dan pendekatan solusi.'],
-                ['step' => 3, 'title' => 'Develop', 'description' => 'Membangun dan menguji bersama klien.'],
-                ['step' => 4, 'title' => 'Deliver', 'description' => 'Meluncurkan, lalu terus menyempurnakan.'],
+                'eyebrow' => 'How we work',
+                'title' => 'From intent to impact.',
+                'description' => 'A collaborative process with clarity at every step.',
+                'steps' => [
+                    ['title' => 'Listen', 'description' => 'Understand the people, space, and real operational challenge.'],
+                    ['title' => 'Imagine', 'description' => 'Translate needs into one clear technology and experience concept.'],
+                    ['title' => 'Integrate', 'description' => 'Deliver every system as one reliable, carefully finished environment.'],
+                    ['title' => 'Evolve', 'description' => 'Support, measure, and improve the space as your needs change.'],
+                ],
             ],
         ]);
     }

@@ -16,9 +16,12 @@ services:
       RUN_MIGRATIONS: "${RUN_MIGRATIONS:-true}"
       RUN_SEEDER: "${RUN_SEEDER:-true}"
     ports:
-      - "${HOST_PORT:-13053}:80"
+      - "${HOST_PORT:-8000}:80"
     volumes:
-      # Persist uploaded images and generated Passport keys across deploys.
+      - ./app:/var/www/html/app
+      - ./config:/var/www/html/config
+      - ./database:/var/www/html/database
+      - ./routes:/var/www/html/routes
       - senja_be_storage:/var/www/html/storage
     depends_on:
       mysql:
@@ -33,18 +36,25 @@ services:
     container_name: senja-be-mysql
     restart: unless-stopped
     environment:
+      # NOTE: DB_USERNAME must NOT be "root" — image mysql:8.0 menolak MYSQL_USER=root.
+      # Pakai user biasa (mis. "senja"). Password root diambil dari DB_ROOT_PASSWORD,
+      # fallback ke DB_PASSWORD kalau DB_ROOT_PASSWORD tidak diisi.
       MYSQL_DATABASE: "${DB_DATABASE:-senja_be}"
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-${DB_PASSWORD:-root}}"
       MYSQL_USER: "${DB_USERNAME:-senja}"
       MYSQL_PASSWORD: "${DB_PASSWORD:-senja}"
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${FORWARD_DB_PORT:-3306}:3306"
     volumes:
       - senja_be_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-root}"]
+      # Pakai env di dalam container supaya selalu sinkron dengan MYSQL_ROOT_PASSWORD.
+      # $$ = escape agar tidak di-interpolate oleh docker compose di host.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\""]
       interval: 10s
       timeout: 5s
       retries: 10

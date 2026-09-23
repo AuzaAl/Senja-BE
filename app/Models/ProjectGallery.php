@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A single image in a project's gallery.
  */
-#[Fillable(['project_id', 'image_path', 'alt', 'sort_order'])]
+#[Fillable(['project_id', 'image_path', 'alt', 'position', 'sort_order'])]
 class ProjectGallery extends Model
 {
     protected $table = 'project_gallery';

@@ -61,7 +61,7 @@ php artisan event:cache
 
 ```bash
 # Seeder role dasar (admin, editor, viewer)
-php artisan db:seed --class=RoleSeeder --force
+php artisan db:seed --class=RolePermissionSeeder --force
 ```
 
 ## Update / Rilis Berikutnya
@@ -132,13 +132,13 @@ docker compose exec senja_be php artisan passport:client --password --name="Senj
 # lalu: docker compose restart senja_be
 ```
 
-API tersedia di `http://localhost:${HOST_PORT:-13053}/api/v1`.
+API tersedia di `http://localhost:${HOST_PORT:-8000}/api/v1`.
 
 ### Variabel environment penting
 
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `HOST_PORT` | `13053` | Port host yang dipetakan ke port 80 container |
+| `HOST_PORT` | `8000` | Port host yang dipetakan ke port 80 container |
 | `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | `senja_be` / `senja` / `senja` | Kredensial MySQL container |
 | `DB_ROOT_PASSWORD` | `root` | Password root MySQL container |
 | `RUN_MIGRATIONS` | `true` | Jalankan `migrate --force` saat start |

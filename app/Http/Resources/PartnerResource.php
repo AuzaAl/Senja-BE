@@ -17,24 +17,43 @@ class PartnerResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $logo = $this->mediaItem($this->logo);
+        $hero = $this->mediaItem($this->hero_image ?? null);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'logo' => $this->mediaItem($this->logo),
+            'number' => $this->number ?? str_pad((string) (($this->sort_order ?? 0) ?: $this->id), 2, '0', STR_PAD_LEFT),
+            'category' => $this->category,
+            'logo' => $logo,
+            // FE aliases
+            'image' => $logo['src'],
+            'heroImage' => $hero['src'],
+            'hero_image' => $hero,
             'description' => $this->description,
+            'capabilities' => $this->capabilities ?? [],
+            'relationship' => $this->relationship,
+            'relationshipDetail' => $this->relationship_detail,
+            'relationship_detail' => $this->relationship_detail,
             'website' => $this->website,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
             'gallery' => $this->whenLoaded('gallery', fn () => $this->mediaCollection($this->gallery)),
-            'products' => $this->whenLoaded('products', fn () => $this->products->map(fn ($product): array => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description,
-                'image' => $this->mediaItem($product->image_path),
-                'link' => $product->link,
-                'sort_order' => $product->sort_order,
-            ])->values()),
+            'products' => $this->whenLoaded('products', fn () => $this->products->map(function ($product): array {
+                $image = $this->mediaItem($product->image_path);
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'category' => $product->category,
+                    'description' => $product->description,
+                    'image' => $image['src'] ?? $image,
+                    'image_detail' => $image,
+                    'link' => $product->link,
+                    'sort_order' => $product->sort_order,
+                ];
+            })->values()),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

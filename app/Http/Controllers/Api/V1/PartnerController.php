@@ -22,7 +22,18 @@ class PartnerController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $partners = Partner::query()
-            ->active()
+            ->with(['gallery', 'products'])
+            // Public default only active; CMS admin can pass ?active=all|0|1
+            ->when(
+                $request->string('active')->toString() !== 'all',
+                fn ($query) => $query->when(
+                    $request->has('active'),
+                    fn ($q) => $q->where('is_active', $request->boolean('active')),
+                    fn ($q) => $q->where('is_active', true)
+                )
+            )
+            ->when($request->string('category')->trim()->toString(), fn ($query, string $category) => $query->where('category', $category))
+            ->when($request->string('search')->trim()->toString(), fn ($query, string $search) => $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('slug', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%")))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate($request->integer('per_page', 15))
@@ -33,7 +44,7 @@ class PartnerController extends Controller
 
     public function show(Partner $partner): PartnerResource|JsonResponse
     {
-        if (! $partner->is_active) {
+        if (! $partner->is_active && ! request()->user()) {
             return response()->json([
                 'message' => 'Partner tidak ditemukan.',
             ], Response::HTTP_NOT_FOUND);
@@ -44,18 +55,26 @@ class PartnerController extends Controller
 
     public function store(StorePartnerRequest $request): JsonResponse
     {
+        $validated = $request->validated();
+
         $partner = Partner::create([
-            'name' => $request->validated('name'),
-            'slug' => $request->validated('slug') ?? Str::slug($request->validated('name')),
-            'description' => $request->validated('description'),
-            'website' => $request->validated('website'),
-            'sort_order' => $request->validated('sort_order'),
-            'is_active' => (bool) ($request->validated('is_active') ?? true),
-            'logo' => $this->resolveSingleImage($request, 'logo', 'logo_path'),
+            'name' => $validated['name'],
+            'slug' => $validated['slug'] ?? Str::slug($validated['name']),
+            'number' => $validated['number'] ?? null,
+            'category' => $validated['category'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'capabilities' => $validated['capabilities'] ?? null,
+            'relationship' => $validated['relationship'] ?? null,
+            'relationship_detail' => $validated['relationship_detail'] ?? null,
+            'website' => $validated['website'] ?? null,
+            'sort_order' => $validated['sort_order'] ?? 0,
+            'is_active' => array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : true,
+            'logo' => $this->resolvePartnerImage($request, 'logo', 'logo_path', ['image', 'src']),
+            'hero_image' => $this->resolvePartnerImage($request, 'hero_image', 'hero_image_path', ['heroImage', 'hero_image', 'src']),
         ]);
 
-        $this->replaceGallery($partner->gallery(), $request->validated('gallery') ?? []);
-        $this->replaceProducts($partner->products(), $request->validated('products') ?? []);
+        $this->replaceGallery($partner->gallery(), $validated['gallery'] ?? []);
+        $this->replaceProducts($partner->products(), $validated['products'] ?? []);
 
         return (new PartnerResource($partner->fresh(['gallery', 'products'])))
             ->response()
@@ -64,25 +83,46 @@ class PartnerController extends Controller
 
     public function update(UpdatePartnerRequest $request, Partner $partner): PartnerResource|JsonResponse
     {
-        $partner->name = $request->validated('name');
-        $partner->slug = $request->validated('slug') ?? $partner->slug;
-        $partner->description = $request->validated('description');
-        $partner->website = $request->validated('website');
-        $partner->sort_order = $request->validated('sort_order');
+        $validated = $request->validated();
 
-        if ($request->has('is_active')) {
-            $partner->is_active = (bool) $request->validated('is_active');
+        $partner->fill([
+            'name' => $validated['name'] ?? $partner->name,
+            'slug' => $validated['slug'] ?? $partner->slug,
+            'number' => $validated['number'] ?? $partner->number,
+            'category' => $validated['category'] ?? $partner->category,
+            'description' => $validated['description'] ?? $partner->description,
+            'capabilities' => $validated['capabilities'] ?? $partner->capabilities,
+            'relationship' => $validated['relationship'] ?? $partner->relationship,
+            'relationship_detail' => $validated['relationship_detail'] ?? $partner->relationship_detail,
+            'website' => $validated['website'] ?? $partner->website,
+            'sort_order' => $validated['sort_order'] ?? $partner->sort_order,
+        ]);
+
+        if (array_key_exists('is_active', $validated)) {
+            $partner->is_active = (bool) $validated['is_active'];
         }
 
-        if ($request->hasFile('logo') || $request->filled('logo_path')) {
-            $oldLogo = $partner->logo;
-            $partner->logo = $this->resolveSingleImage($request, 'logo', 'logo_path', $partner->logo);
-            ImageUploader::delete($oldLogo);
+        $newLogo = $this->resolvePartnerImage($request, 'logo', 'logo_path', ['image', 'src'], $partner->logo);
+        if ($newLogo !== $partner->logo) {
+            ImageUploader::delete($partner->logo);
+            $partner->logo = $newLogo;
+        }
+
+        $newHero = $this->resolvePartnerImage($request, 'hero_image', 'hero_image_path', ['heroImage', 'hero_image', 'src'], $partner->hero_image);
+        if ($newHero !== $partner->hero_image) {
+            ImageUploader::delete($partner->hero_image);
+            $partner->hero_image = $newHero;
         }
 
         $partner->save();
-        $this->replaceGallery($partner->gallery(), $request->validated('gallery') ?? []);
-        $this->replaceProducts($partner->products(), $request->validated('products') ?? []);
+
+        if (array_key_exists('gallery', $validated)) {
+            $this->replaceGallery($partner->gallery(), $validated['gallery'] ?? []);
+        }
+
+        if (array_key_exists('products', $validated)) {
+            $this->replaceProducts($partner->products(), $validated['products'] ?? []);
+        }
 
         return new PartnerResource($partner->fresh(['gallery', 'products']));
     }
@@ -90,6 +130,7 @@ class PartnerController extends Controller
     public function destroy(Partner $partner): JsonResponse
     {
         ImageUploader::delete($partner->logo);
+        ImageUploader::delete($partner->hero_image);
 
         foreach ($partner->gallery as $media) {
             ImageUploader::delete($media->image_path);
@@ -104,5 +145,24 @@ class PartnerController extends Controller
         return response()->json([
             'message' => 'Partner berhasil dihapus.',
         ]);
+    }
+
+    /**
+     * @param  array<int, string>  $aliases
+     */
+    private function resolvePartnerImage(Request $request, string $fileKey, string $pathKey, array $aliases = [], ?string $current = null): ?string
+    {
+        if ($request->hasFile($fileKey)) {
+            return ImageUploader::store($request->file($fileKey), 'uploads');
+        }
+
+        foreach (array_merge([$pathKey, $fileKey], $aliases) as $key) {
+            $value = $request->input($key);
+            if (is_string($value) && trim($value) !== '') {
+                return $value;
+            }
+        }
+
+        return $current;
     }
 }

@@ -18,14 +18,13 @@ class HeroFactory extends Factory
     public function definition(): array
     {
         return [
-            'eyebrow' => 'Solusi Digital untuk Bisnis Anda',
-            'title' => $this->faker->sentence(3),
-            'subtitle' => $this->faker->sentence(8),
-            'button_label' => 'Mulai Proyek',
-            'button_link' => '/contact',
+            'eyebrow' => 'Smart workplace solutions',
+            'title' => 'Technology that connects people, spaces & ideas',
+            'subtitle' => 'We design, integrate, and support intelligent workplace solutions that enable collaboration, communication, and growth.',
+            'button_label' => 'Explore our work',
+            'button_link' => '#solutions',
             'images' => [
-                ['path' => 'images/hero-1.jpg', 'alt' => 'Hero Senja 1'],
-                ['path' => 'images/hero-2.jpg', 'alt' => 'Hero Senja 2'],
+                ['path' => '/images/1.png', 'alt' => 'Senja-enabled executive meeting room with integrated displays'],
             ],
         ];
     }

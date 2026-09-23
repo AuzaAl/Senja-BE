@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A project showcased on the landing page, with stats, partner references,
  * and an image gallery.
  */
-#[Fillable(['title', 'slug', 'category', 'featured', 'summary', 'content', 'stats', 'cover_image', 'sort_order'])]
+#[Fillable(['title', 'slug', 'number', 'category', 'location', 'year', 'client', 'featured', 'summary', 'description', 'overview', 'challenge', 'solution', 'services', 'content', 'stats', 'cover_image', 'sort_order'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -36,6 +36,14 @@ class Project extends Model
     }
 
     /**
+     * Use slug for route model binding (public + admin share /{project:slug}).
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -44,6 +52,7 @@ class Project extends Model
     {
         return [
             'featured' => 'boolean',
+            'services' => 'array',
             'stats' => 'array',
         ];
     }

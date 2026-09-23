@@ -131,7 +131,7 @@ class ProjectTest extends TestCase
         Passport::actingAs($this->userWithRole('admin'), [], 'api');
         $project = Project::factory()->create();
 
-        $this->putJson("/api/v1/projects/{$project->id}", $this->payload(['title' => 'Judul Baru']))
+        $this->putJson("/api/v1/projects/{$project->slug}", $this->payload(['title' => 'Judul Baru']))
             ->assertOk()
             ->assertJsonPath('data.title', 'Judul Baru');
 
@@ -143,7 +143,7 @@ class ProjectTest extends TestCase
         Passport::actingAs($this->userWithRole('admin'), [], 'api');
         $project = Project::factory()->create();
 
-        $this->deleteJson("/api/v1/projects/{$project->id}")
+        $this->deleteJson("/api/v1/projects/{$project->slug}")
             ->assertOk()
             ->assertJsonPath('message', 'Proyek berhasil dihapus.');
 

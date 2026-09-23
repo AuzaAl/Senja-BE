@@ -20,20 +20,25 @@ trait SerializesMedia
 
     /**
      * Serialize a single media item.
+     * Includes `src` alias so FE (`image.src`) works without mapping.
      *
-     * @return array{path: ?string, url: ?string, alt: ?string}
+     * @return array{path: ?string, url: ?string, src: ?string, alt: ?string}
      */
     protected function mediaItem(?string $path, ?string $alt = null): array
     {
+        $url = $this->mediaUrl($path);
+
         return [
             'path' => $path,
-            'url' => $this->mediaUrl($path),
+            'url' => $url,
+            'src' => $url ?? $path,
             'alt' => $alt,
         ];
     }
 
     /**
      * Serialize a gallery of media items (models or arrays).
+     * Exposes both BE (`path/url`) and FE (`src`) keys for compatibility.
      *
      * @param  Collection<int, object>|array<int, array<string, mixed>>|null  $items
      * @return array<int, array<string, mixed>>
@@ -43,12 +48,13 @@ trait SerializesMedia
         return collect($items ?? [])
             ->map(function (mixed $item): array {
                 $data = is_array($item) ? $item : $item->getAttributes();
+                $path = $data['image_path'] ?? $data['path'] ?? null;
+                $url = $this->mediaUrl($path) ?? $path;
 
                 return [
-                    ...$this->mediaItem(
-                        $data['image_path'] ?? $data['path'] ?? null,
-                        $data['alt'] ?? null,
-                    ),
+                    ...$this->mediaItem($path, $data['alt'] ?? null),
+                    'src' => $url,
+                    'position' => $data['position'] ?? null,
                     'sort_order' => $data['sort_order'] ?? 0,
                 ];
             })

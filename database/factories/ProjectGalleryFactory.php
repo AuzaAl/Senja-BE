@@ -22,6 +22,7 @@ class ProjectGalleryFactory extends Factory
             'project_id' => Project::factory(),
             'image_path' => 'images/project-gallery-'.$this->faker->numberBetween(1, 5).'.jpg',
             'alt' => $this->faker->sentence(2),
+            'position' => null,
             'sort_order' => $this->faker->numberBetween(0, 10),
         ];
     }

@@ -21,10 +21,13 @@ class ContactInquiryResource extends JsonResource
             'company' => $this->company,
             'phone' => $this->phone,
             'project_type' => $this->project_type,
+            // CMS camelCase aliases
+            'projectType' => $this->project_type,
             'timeline' => $this->timeline,
             'message' => $this->message,
             'status' => $this->status,
             'created_at' => $this->created_at?->toIso8601String(),
+            'createdAt' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

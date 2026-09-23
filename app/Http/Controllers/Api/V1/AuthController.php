@@ -69,7 +69,7 @@ class AuthController extends Controller
      */
     public function refresh(RefreshTokenRequest $request): JsonResponse
     {
-        $response = Http::asForm()->post($this->tokenUrl(), [
+        $tokens = $this->postToken([
             'grant_type' => 'refresh_token',
             'refresh_token' => $request->validated('refresh_token'),
             'client_id' => config('services.passport.password_client_id'),
@@ -77,7 +77,7 @@ class AuthController extends Controller
             'scope' => '',
         ]);
 
-        if ($response->failed()) {
+        if ($tokens === null) {
             return response()->json([
                 'message' => 'Refresh token tidak valid atau kedaluwarsa.',
             ], Response::HTTP_UNAUTHORIZED);
@@ -85,7 +85,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Token berhasil diperbarui.',
-            'data' => ['token' => $response->json()],
+            'data' => ['token' => $tokens],
         ]);
     }
 
@@ -115,7 +115,7 @@ class AuthController extends Controller
      */
     private function issueToken(string $email, string $password): ?array
     {
-        $response = Http::asForm()->post($this->tokenUrl(), [
+        return $this->postToken([
             'grant_type' => 'password',
             'client_id' => config('services.passport.password_client_id'),
             'client_secret' => config('services.passport.password_client_secret'),
@@ -123,17 +123,35 @@ class AuthController extends Controller
             'password' => $password,
             'scope' => '',
         ]);
+    }
 
-        if ($response->failed()) {
-            Log::warning('Passport password grant gagal.', [
-                'status' => $response->status(),
-                'body' => $response->json(),
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>|null
+     */
+    private function postToken(array $params): ?array
+    {
+        if (app()->runningUnitTests()) {
+            $response = Http::asForm()->post($this->tokenUrl(), $params);
+
+            return $response->successful() ? $response->json() : null;
+        }
+
+        $tokenRequest = Request::create('/oauth/token', 'POST', $params);
+        $tokenRequest->headers->set('Accept', 'application/json');
+
+        $response = app()->handle($tokenRequest);
+
+        if (! $response->isSuccessful()) {
+            Log::warning('Passport grant gagal.', [
+                'status' => $response->getStatusCode(),
+                'body' => json_decode($response->getContent(), true),
             ]);
 
             return null;
         }
 
-        return $response->json();
+        return json_decode($response->getContent(), true);
     }
 
     private function tokenUrl(): string

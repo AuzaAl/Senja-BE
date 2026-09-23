@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A product offered by a partner.
  */
-#[Fillable(['partner_id', 'name', 'description', 'image_path', 'link', 'sort_order'])]
+#[Fillable(['partner_id', 'name', 'category', 'description', 'image_path', 'link', 'sort_order'])]
 class PartnerProduct extends Model
 {
     /** @use HasFactory<PartnerProductFactory> */

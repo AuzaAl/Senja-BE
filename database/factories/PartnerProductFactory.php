@@ -21,6 +21,7 @@ class PartnerProductFactory extends Factory
         return [
             'partner_id' => Partner::factory(),
             'name' => $this->faker->words(2, true),
+            'category' => $this->faker->randomElement(['Professional Display', 'Collaboration', 'Network', 'Projection']),
             'description' => $this->faker->sentence(),
             'image_path' => 'images/product-'.$this->faker->numberBetween(1, 5).'.jpg',
             'link' => $this->faker->url(),

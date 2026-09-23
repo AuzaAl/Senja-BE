@@ -11,19 +11,18 @@ class HeroSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the homepage hero (singleton row).
+     * Seed the homepage hero (singleton row) — mirrors FE Hero.tsx + CMS defaultHeroContent.
      */
     public function run(): void
     {
         Hero::updateOrCreate(['id' => 1], [
-            'eyebrow' => 'Welcome to Senja',
-            'title' => 'Kami merancang pengalaman digital yang terasa hidup',
-            'subtitle' => 'Senja adalah studio yang membangun brand, produk, dan kampanye untuk tim yang ambisius.',
-            'button_label' => 'Mulai proyek',
-            'button_link' => 'https://senja.id/contact',
+            'eyebrow' => 'Smart workplace solutions',
+            'title' => 'Technology that connects people, spaces & ideas',
+            'subtitle' => 'We design, integrate, and support intelligent workplace solutions that enable collaboration, communication, and growth.',
+            'button_label' => 'Explore our work',
+            'button_link' => '#solutions',
             'images' => [
-                ['path' => 'https://picsum.photos/seed/hero-senja/1600/900', 'alt' => 'Senja creative studio'],
-                ['path' => 'https://picsum.photos/seed/hero-workspace/1600/900', 'alt' => 'Senja workspace'],
+                ['path' => '/images/1.png', 'alt' => 'Senja-enabled executive meeting room with integrated displays'],
             ],
         ]);
     }
