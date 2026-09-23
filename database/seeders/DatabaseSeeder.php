@@ -27,5 +27,12 @@ class DatabaseSeeder extends Seeder
         );
 
         $admin->assignRole('admin');
+
+        $this->call([
+            HeroSeeder::class,
+            AboutSeeder::class,
+            PartnerSeeder::class,
+            ProjectSeeder::class,
+        ]);
     }
 }
