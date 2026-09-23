@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Passport Password Grant Client
+    |--------------------------------------------------------------------------
+    |
+    | Credentials of the Password Grant client used by the CMS login flow to
+    | request access/refresh tokens from the Passport oauth/token endpoint.
+    |
+    */
+
+    'passport' => [
+        'password_client_id' => env('PASSPORT_PASSWORD_CLIENT_ID'),
+        'password_client_secret' => env('PASSPORT_PASSWORD_CLIENT_SECRET'),
+    ],
+
 ];

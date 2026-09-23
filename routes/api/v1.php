@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,12 +31,12 @@ Route::prefix('public')->group(function () {
 
 // --- Auth (Passport) ---
 Route::prefix('auth')->group(function () {
-    // Route::post('/login', [AuthController::class, 'login']);
-    // Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
 
     Route::middleware('auth:api')->group(function () {
-        // Route::get('/me', [AuthController::class, 'me']);
-        // Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
     });
 });
 
@@ -46,8 +48,30 @@ Route::middleware('auth:api')->group(function () {
     //
     // Route::apiResource('partners', PartnerController::class);
     // Route::apiResource('projects', ProjectController::class);
-    // Route::apiResource('users', UserController::class)->middleware('role:admin');
-    //
+
+    // --- User management (admin only) ---
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{user}', [UserController::class, 'show']);
+    });
+
+    Route::middleware('permission:users.create')->group(function () {
+        Route::post('/users', [UserController::class, 'store']);
+    });
+
+    Route::middleware('permission:users.update')->group(function () {
+        Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update']);
+    });
+
+    Route::middleware('permission:users.delete')->group(function () {
+        Route::delete('/users/{user}', [UserController::class, 'destroy']);
+    });
+
+    Route::middleware('permission:users.assign-role')->group(function () {
+        Route::post('/users/{user}/roles', [UserController::class, 'assignRoles']);
+        Route::delete('/users/{user}/roles', [UserController::class, 'revokeRoles']);
+    });
+
     // Route::get('/contact-inquiries', [ContactInquiryController::class, 'index']);
     // Route::delete('/contact-inquiries/{id}', [ContactInquiryController::class, 'destroy']);
 });

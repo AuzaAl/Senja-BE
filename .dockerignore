@@ -1,0 +1,46 @@
+.git
+.gitignore
+.github
+.gitattributes
+
+# Environment & local secrets
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
+
+# Dependencies (re-installed in the image)
+vendor
+node_modules
+
+# Build artefacts & caches
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+storage/*.key
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+public/storage
+public/build
+public/hot
+
+# Tests & tooling — not needed at runtime
+tests
+phpunit.xml
+pint.json
+.editorconfig
+
+# Editor / OS noise
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+*.log
+
+# Docker meta
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
