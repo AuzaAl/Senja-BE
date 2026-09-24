@@ -18,6 +18,21 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RolePermissionSeeder::class);
 
+        if (app()->environment('production')) {
+            $this->command?->warn(
+                'DatabaseSeeder: skipped demo users in production. Create the first admin via `php artisan senja:create-admin` or the users API.'
+            );
+
+            $this->call([
+                HeroSeeder::class,
+                AboutSeeder::class,
+                PartnerSeeder::class,
+                ProjectSeeder::class,
+            ]);
+
+            return;
+        }
+
         $admin = User::firstOrCreate(
             ['email' => 'admin@senja.id'],
             [

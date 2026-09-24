@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Hero;
 
+use App\Support\ImageUploader;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -26,7 +27,7 @@ class UpdateHeroRequest extends FormRequest
             'button_link' => ['nullable', 'string', 'max:2048'],
             'images' => ['nullable', 'array'],
             'images.*' => [$this->imageOrPathRule()],
-            'images.*.image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'images.*.image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'images.*.image_path' => ['nullable', 'string', 'max:2048'],
             'images.*.alt' => ['nullable', 'string', 'max:255'],
         ];

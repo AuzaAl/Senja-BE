@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Project;
 
+use App\Support\ImageUploader;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,13 +41,13 @@ abstract class ProjectRequest extends FormRequest
             'services.*' => ['string', 'max:255'],
             'content' => ['nullable', 'string'],
             'stats' => ['nullable', 'array'],
-            'cover_image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'cover_image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'cover_image_path' => ['nullable', 'string', 'max:2048'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
 
             'gallery' => ['nullable', 'array', 'max:30'],
             'gallery.*' => [$this->imageOrPathRule()],
-            'gallery.*.image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'gallery.*.image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'gallery.*.image_path' => ['nullable', 'string', 'max:2048'],
             'gallery.*.alt' => ['nullable', 'string', 'max:255'],
             'gallery.*.position' => ['nullable', 'string', 'max:255'],

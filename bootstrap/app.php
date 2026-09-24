@@ -22,6 +22,19 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
+
+        // Behind a TLS-terminating reverse proxy/load balancer, trust its
+        // forwarded headers so generated URLs, redirects and secure cookies
+        // use the correct https scheme. TRUSTED_PROXIES="*" is acceptable
+        // when the app is not directly reachable from the internet.
+        $middleware->trustProxies(
+            at: env('TRUSTED_PROXIES') === '*' ? '*' : explode(',', (string) env('TRUSTED_PROXIES', '127.0.0.1,::1')),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO
+                | Request::HEADER_X_FORWARDED_AWS_ELB,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

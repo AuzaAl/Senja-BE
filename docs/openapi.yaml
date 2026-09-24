@@ -1,8 +1,17 @@
 openapi: 3.0.3
 info:
-  title: Senja PKL API
-  description: API v1 untuk Website Profil Senja dan Content Management System (CMS).
-  version: 1.0.0
+  title: Senja Sabiru API
+  description: |
+    API v1 untuk Website Company Profile Senja dan Content Management System (CMS).
+
+    - **Auth**: Laravel Passport, password grant. Login returns an access + refresh token pair.
+      Send `Authorization: Bearer <access_token>` on protected endpoints.
+    - **RBAC**: spatie/laravel-permission. Roles `admin`, `editor`, `viewer`; permissions are
+      named `<resource>.<action>` (e.g. `partners.create`).
+    - **Rate limits**: `/auth/login` and `/auth/refresh` are throttled to 10 req/min;
+      `POST /contact-inquiries` to 30 req/min. Exceeding returns HTTP 429.
+    - **Errors**: JSON `{ message }`; validation failures return 422 with `{ message, errors }`.
+  version: 1.1.0
 servers:
   - url: http://localhost:8000/api/v1
     description: Local Development Server
@@ -15,11 +24,13 @@ tags:
   - name: System
     description: Health check and status
   - name: Authentication
-    description: OAuth2 Passport authentication endpoints
+    description: Passport authentication endpoints
   - name: Public Content
-    description: Endpoints consumed by public landing page
+    description: Endpoints consumed by the public landing page
   - name: CMS Admin
     description: Protected content management endpoints
+  - name: Uploads
+    description: Image upload for CMS content
   - name: User Management
     description: RBAC and user administration
 
@@ -30,8 +41,57 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  parameters:
+    PerPage:
+      name: per_page
+      in: query
+      description: Items per page (default 15).
+      schema:
+        type: integer
+        default: 15
+    Search:
+      name: search
+      in: query
+      description: Case-insensitive substring search.
+      schema:
+        type: string
+    PartnerSlug:
+      name: partner
+      in: path
+      required: true
+      description: Partner slug (route model binding key).
+      schema:
+        type: string
+    ProjectSlug:
+      name: project
+      in: path
+      required: true
+      description: Project slug (route model binding key).
+      schema:
+        type: string
+    InquiryId:
+      name: inquiry
+      in: path
+      required: true
+      description: Contact inquiry id.
+      schema:
+        type: integer
+    UserId:
+      name: user
+      in: path
+      required: true
+      description: User id.
+      schema:
+        type: integer
+
   schemas:
     ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ValidationError:
       type: object
       properties:
         message:
@@ -43,133 +103,320 @@ components:
             items:
               type: string
 
-    ImageRef:
+    Media:
       type: object
+      description: Serialized media item. `src` is the resolved URL (falls back to the stored path).
       properties:
-        src:
-          type: string
-        alt:
-          type: string
         path:
           type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        src:
+          type: string
+          nullable: true
+        alt:
+          type: string
+          nullable: true
 
-    HeroData:
+    GalleryItem:
+      allOf:
+        - $ref: '#/components/schemas/Media'
+        - type: object
+          properties:
+            position:
+              type: string
+              nullable: true
+            sort_order:
+              type: integer
+
+    TokenPair:
       type: object
       properties:
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        roles:
+          type: array
+          items:
+            type: string
+          description: Present when the roles relation is loaded.
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Present when the permissions relation is loaded.
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Hero:
+      type: object
+      properties:
+        id:
+          type: integer
         eyebrow:
           type: string
+          nullable: true
         title:
           type: string
         subtitle:
           type: string
+          nullable: true
         button_label:
           type: string
+          nullable: true
+        buttonLabel:
+          type: string
+          nullable: true
+          description: CMS alias of button_label.
         button_link:
           type: string
+          nullable: true
+        buttonLink:
+          type: string
+          nullable: true
+          description: CMS alias of button_link.
         images:
           type: array
           items:
-            $ref: '#/components/schemas/ImageRef'
-
-    AboutData:
-      type: object
-      properties:
-        hero:
-          type: object
-        story:
-          type: object
-        quote:
-          type: object
-        principles:
-          type: object
-        capabilities:
-          type: object
-        process:
-          type: object
-
-    ProjectItem:
-      type: object
-      properties:
-        id:
-          type: integer
-        slug:
-          type: string
-        number:
-          type: string
-        title:
-          type: string
-        category:
-          type: string
-        location:
-          type: string
-        year:
-          type: string
-        client:
-          type: string
-        image:
-          type: string
-        description:
-          type: string
-        overview:
-          type: string
-        challenge:
-          type: string
-        solution:
-          type: string
-        services:
+            $ref: '#/components/schemas/Media'
+        image_urls:
           type: array
+          description: Flat list of resolved image URLs (FE convenience).
           items:
             type: string
-        stats:
-          type: array
-          items:
-            type: object
-        partners:
-          type: array
-          items:
-            type: object
-        gallery:
-          type: array
-          items:
-            type: object
-        featured:
-          type: boolean
+        updated_at:
+          type: string
+          format: date-time
 
-    PartnerItem:
+    About:
+      type: object
+      description: |
+        Editorial singleton. Each section is free-form but validated according to
+        the shape documented in the `PUT /about` request body.
+      properties:
+        id:
+          type: integer
+        hero:
+          type: object
+          nullable: true
+        story:
+          type: object
+          nullable: true
+        quote:
+          type: object
+          nullable: true
+        principles:
+          type: object
+          nullable: true
+        capabilities:
+          type: object
+          nullable: true
+        process:
+          type: object
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+
+    Partner:
       type: object
       properties:
         id:
           type: integer
+        name:
+          type: string
         slug:
           type: string
         number:
           type: string
-        name:
-          type: string
-        image:
-          type: string
+          nullable: true
         category:
           type: string
+          nullable: true
+        logo:
+          $ref: '#/components/schemas/Media'
+        image:
+          type: string
+          nullable: true
+          description: Alias of logo.src.
+        heroImage:
+          type: string
+          nullable: true
+          description: Alias of hero_image.src.
+        hero_image:
+          $ref: '#/components/schemas/Media'
         description:
           type: string
+          nullable: true
         capabilities:
           type: array
           items:
             type: string
         relationship:
           type: string
+          nullable: true
+        relationshipDetail:
+          type: string
+          nullable: true
         relationship_detail:
           type: string
-        hero_image:
+          nullable: true
+        website:
           type: string
+          nullable: true
+        sort_order:
+          type: integer
+        is_active:
+          type: boolean
         gallery:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/GalleryItem'
         products:
           type: array
           items:
+            $ref: '#/components/schemas/PartnerProduct'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PartnerProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        image:
+          type: string
+          nullable: true
+        image_detail:
+          $ref: '#/components/schemas/Media'
+        link:
+          type: string
+          nullable: true
+        sort_order:
+          type: integer
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        number:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        year:
+          type: string
+          nullable: true
+        client:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        summary:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        overview:
+          type: string
+          nullable: true
+        challenge:
+          type: string
+          nullable: true
+        solution:
+          type: string
+          nullable: true
+        services:
+          type: array
+          items:
+            type: string
+        content:
+          type: string
+          nullable: true
+        stats:
+          nullable: true
+        cover_image:
+          $ref: '#/components/schemas/Media'
+        image:
+          type: string
+          nullable: true
+          description: Alias of cover_image.src.
+        sort_order:
+          type: integer
+        gallery:
+          type: array
+          items:
+            $ref: '#/components/schemas/GalleryItem'
+        partners:
+          type: array
+          items:
             type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+              logo:
+                $ref: '#/components/schemas/Media'
+              image:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     ContactInquiry:
       type: object
@@ -180,22 +427,139 @@ components:
           type: string
         email:
           type: string
+          format: email
         company:
           type: string
+          nullable: true
         phone:
           type: string
+          nullable: true
         project_type:
           type: string
+          nullable: true
+        projectType:
+          type: string
+          nullable: true
+          description: CMS alias of project_type.
         timeline:
           type: string
+          nullable: true
         message:
           type: string
         status:
           type: string
-          enum: [pending, reviewed, responded, archived]
+          enum: [new, read]
         created_at:
           type: string
           format: date-time
+        createdAt:
+          type: string
+          format: date-time
+          description: CMS alias of created_at.
+        updated_at:
+          type: string
+          format: date-time
+
+    PaginatedPartners:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Partner'
+        links:
+          type: object
+        meta:
+          type: object
+
+    PaginatedProjects:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        links:
+          type: object
+        meta:
+          type: object
+
+    PaginatedInquiries:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactInquiry'
+        links:
+          type: object
+        meta:
+          type: object
+
+    PaginatedUsers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        links:
+          type: object
+        meta:
+          type: object
+
+    PartnerGalleryInput:
+      type: object
+      description: Provide either an uploaded `image` file or an existing `image_path`.
+      properties:
+        image:
+          type: string
+          format: binary
+        image_path:
+          type: string
+        alt:
+          type: string
+        position:
+          type: string
+        sort_order:
+          type: integer
+
+    PartnerProductInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+          format: binary
+        image_path:
+          type: string
+        link:
+          type: string
+          format: uri
+        sort_order:
+          type: integer
+
+    ProjectGalleryInput:
+      type: object
+      description: Provide either an uploaded `image` file or an existing `image_path`.
+      properties:
+        image:
+          type: string
+          format: binary
+        image_path:
+          type: string
+        alt:
+          type: string
+        position:
+          type: string
+        sort_order:
+          type: integer
 
 paths:
   /health:
@@ -205,11 +569,23 @@ paths:
       responses:
         '200':
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: v1
 
   /auth/login:
     post:
       tags: [Authentication]
-      summary: Login with email and password
+      summary: Login with email and password (password grant)
+      description: Throttled to 10 requests per minute.
       requestBody:
         required: true
         content:
@@ -225,16 +601,41 @@ paths:
                   type: string
       responses:
         '200':
-          description: Login successful with access_token and refresh_token
+          description: Login successful. Returns the user and a Passport token pair.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        $ref: '#/components/schemas/TokenPair'
         '401':
-          description: Invalid credentials
+          description: Invalid credentials, or token could not be issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
         '429':
-          description: Too many login attempts
+          description: Too many login attempts.
 
   /auth/refresh:
     post:
       tags: [Authentication]
-      summary: Refresh access token
+      summary: Rotate a refresh token into a new token pair
+      description: Throttled to 10 requests per minute.
       requestBody:
         required: true
         content:
@@ -247,40 +648,82 @@ paths:
                   type: string
       responses:
         '200':
-          description: Token refreshed
+          description: Token refreshed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        $ref: '#/components/schemas/TokenPair'
         '401':
-          description: Invalid or expired refresh token
+          description: Invalid or expired refresh token.
+        '429':
+          description: Too many refresh attempts.
 
   /auth/me:
     get:
       tags: [Authentication]
-      summary: Get authenticated user profile and roles
+      summary: Get the authenticated user with roles and permissions
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Current user information
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
 
   /auth/logout:
     post:
       tags: [Authentication]
-      summary: Revoke current user token
+      summary: Revoke the current access token (and its refresh token)
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Logged out successfully
+          description: Logged out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthenticated.
 
   /hero:
     get:
       tags: [Public Content]
-      summary: Get hero section data
+      summary: Get the hero section (singleton)
       responses:
         '200':
-          description: Hero section content
+          description: Hero content.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Hero'
+        '404':
+          description: Hero content not available yet.
     put:
       tags: [CMS Admin]
-      summary: Update hero section content
+      summary: Update the hero section
+      description: 'Requires permission `hero.update`.'
       security:
         - BearerAuth: []
       requestBody:
@@ -288,21 +731,100 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/HeroData'
+              type: object
+              required: [title]
+              properties:
+                eyebrow:
+                  type: string
+                  maxLength: 255
+                title:
+                  type: string
+                  maxLength: 255
+                subtitle:
+                  type: string
+                  maxLength: 1000
+                button_label:
+                  type: string
+                  maxLength: 255
+                button_link:
+                  type: string
+                  maxLength: 2048
+                images:
+                  type: array
+                  description: |
+                    Accepts objects `{image|image_path, alt}` or plain string paths
+                    (the CMS sends `string[]`).
+                  items:
+                    type: object
+                    properties:
+                      image:
+                        type: string
+                        format: binary
+                      image_path:
+                        type: string
+                      alt:
+                        type: string
       responses:
         '200':
-          description: Hero updated successfully
+          description: Hero updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Hero'
+        '201':
+          description: Hero created (no row existed).
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
+      tags: [CMS Admin]
+      summary: Update the hero section (alias of PUT)
+      description: 'Requires permission `hero.update`.'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        '200':
+          description: Hero updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
   /about:
     get:
       tags: [Public Content]
-      summary: Get about section/page data
+      summary: Get the about content (singleton)
       responses:
         '200':
-          description: About page content
+          description: About content.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/About'
+        '404':
+          description: About content not available yet.
     put:
       tags: [CMS Admin]
-      summary: Update about section/page content
+      summary: Update the about content
+      description: 'Requires permission `about.update`. All sections are optional (partial update).'
       security:
         - BearerAuth: []
       requestBody:
@@ -310,103 +832,367 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AboutData'
+              type: object
+              properties:
+                hero:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    subtitle:
+                      type: string
+                    image:
+                      type: object
+                      properties:
+                        src:
+                          type: string
+                        alt:
+                          type: string
+                story:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    title:
+                      type: string
+                    paragraphs:
+                      type: array
+                      items:
+                        type: string
+                    stats:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          value:
+                            type: string
+                          label:
+                            type: string
+                    image:
+                      type: object
+                      properties:
+                        src:
+                          type: string
+                        alt:
+                          type: string
+                quote:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    text:
+                      type: string
+                    author:
+                      type: string
+                principles:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
+                capabilities:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    visualLabel:
+                      type: string
+                    services:
+                      type: array
+                      items:
+                        type: string
+                    image:
+                      type: object
+                      properties:
+                        src:
+                          type: string
+                        alt:
+                          type: string
+                process:
+                  type: object
+                  properties:
+                    eyebrow:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    steps:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                          description:
+                            type: string
       responses:
         '200':
-          description: About updated successfully
+          description: About updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/About'
+        '201':
+          description: About created (no row existed).
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
+      tags: [CMS Admin]
+      summary: Update the about content (alias of PUT)
+      description: 'Requires permission `about.update`.'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: About updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
   /partners:
     get:
       tags: [Public Content]
-      summary: List all technology partners
+      summary: List partners (paginated)
+      description: |
+        Public callers only see active partners. Authenticated CMS users may override
+        with `?active=all` (all) or `?active=0|1`.
       parameters:
-        - name: per_page
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - name: active
           in: query
+          description: '`all` disables the active filter; `0`/`1` filter by is_active.'
           schema:
-            type: integer
-            default: 15
+            type: string
         - name: category
           in: query
           schema:
             type: string
       responses:
         '200':
-          description: Paginated partner list
+          description: Paginated partner list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPartners'
     post:
       tags: [CMS Admin]
-      summary: Create new partner
+      summary: Create a partner
+      description: 'Requires permission `partners.create`.'
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartnerItem'
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                slug:
+                  type: string
+                  description: 'Optional; auto-generated from name. Lowercase, hyphenated.'
+                  pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+                number:
+                  type: string
+                  maxLength: 10
+                category:
+                  type: string
+                  maxLength: 255
+                logo:
+                  type: string
+                  format: binary
+                logo_path:
+                  type: string
+                hero_image:
+                  type: string
+                  format: binary
+                hero_image_path:
+                  type: string
+                description:
+                  type: string
+                  maxLength: 5000
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                relationship:
+                  type: string
+                relationship_detail:
+                  type: string
+                website:
+                  type: string
+                  format: uri
+                sort_order:
+                  type: integer
+                  minimum: 0
+                is_active:
+                  type: boolean
+                gallery:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PartnerGalleryInput'
+                products:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PartnerProductInput'
       responses:
         '201':
-          description: Partner created
+          description: Partner created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Partner'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
 
-  /partners/{slug}:
+  /partners/{partner}:
+    parameters:
+      - $ref: '#/components/parameters/PartnerSlug'
     get:
       tags: [Public Content]
       summary: Get partner detail by slug
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      description: Inactive partners return 404 for unauthenticated callers.
       responses:
         '200':
-          description: Partner detail
+          description: Partner detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Partner'
         '404':
-          description: Partner not found
+          description: Partner not found.
     put:
       tags: [CMS Admin]
-      summary: Update partner by slug
+      summary: Update a partner by slug
+      description: 'Requires permission `partners.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartnerItem'
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                logo:
+                  type: string
+                  format: binary
+                logo_path:
+                  type: string
+                gallery:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PartnerGalleryInput'
+                products:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PartnerProductInput'
+                is_active:
+                  type: boolean
       responses:
         '200':
-          description: Partner updated
-    delete:
+          description: Partner updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Partner'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
       tags: [CMS Admin]
-      summary: Delete partner
+      summary: Update a partner by slug (alias of PUT)
+      description: 'Requires permission `partners.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
-        '204':
-          description: Partner deleted
+        '200':
+          description: Partner updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+    delete:
+      tags: [CMS Admin]
+      summary: Delete a partner by slug
+      description: 'Requires permission `partners.delete`. Also deletes its media files.'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Partner deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
   /projects:
     get:
       tags: [Public Content]
-      summary: List all projects
+      summary: List projects (paginated)
       parameters:
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 15
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
         - name: category
           in: query
           schema:
@@ -415,78 +1201,212 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: year
+          in: query
+          schema:
+            type: string
       responses:
         '200':
-          description: Paginated project list
+          description: Paginated project list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjects'
     post:
       tags: [CMS Admin]
-      summary: Create new project
+      summary: Create a project
+      description: 'Requires permission `projects.create`.'
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProjectItem'
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  maxLength: 255
+                slug:
+                  type: string
+                  description: 'Optional; auto-generated from title.'
+                  pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+                number:
+                  type: string
+                  maxLength: 10
+                category:
+                  type: string
+                location:
+                  type: string
+                year:
+                  type: string
+                client:
+                  type: string
+                featured:
+                  type: boolean
+                summary:
+                  type: string
+                  maxLength: 2000
+                description:
+                  type: string
+                  maxLength: 2000
+                overview:
+                  type: string
+                challenge:
+                  type: string
+                solution:
+                  type: string
+                services:
+                  type: array
+                  items:
+                    type: string
+                content:
+                  type: string
+                stats:
+                  type: array
+                  items:
+                    type: object
+                cover_image:
+                  type: string
+                  format: binary
+                cover_image_path:
+                  type: string
+                sort_order:
+                  type: integer
+                  minimum: 0
+                gallery:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProjectGalleryInput'
+                partners:
+                  type: array
+                  description: Partner ids (int) or slugs (string).
+                  items:
+                    type: string
       responses:
         '201':
-          description: Project created
+          description: Project created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Project'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
 
-  /projects/{slug}:
+  /projects/{project}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectSlug'
     get:
       tags: [Public Content]
       summary: Get project detail by slug
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
         '200':
-          description: Project detail
+          description: Project detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Project'
         '404':
-          description: Project not found
+          description: Project not found.
     put:
       tags: [CMS Admin]
-      summary: Update project by slug
+      summary: Update a project by slug
+      description: 'Requires permission `projects.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProjectItem'
+              type: object
+              properties:
+                title:
+                  type: string
+                slug:
+                  type: string
+                cover_image:
+                  type: string
+                  format: binary
+                cover_image_path:
+                  type: string
+                gallery:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ProjectGalleryInput'
+                partners:
+                  type: array
+                  items:
+                    type: string
       responses:
         '200':
-          description: Project updated
-    delete:
+          description: Project updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Project'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
       tags: [CMS Admin]
-      summary: Delete project
+      summary: Update a project by slug (alias of PUT)
+      description: 'Requires permission `projects.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
-        '204':
-          description: Project deleted
+        '200':
+          description: Project updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+    delete:
+      tags: [CMS Admin]
+      summary: Delete a project by slug
+      description: 'Requires permission `projects.delete`. Also deletes its media files.'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
   /contact-inquiries:
     post:
       tags: [Public Content]
-      summary: Submit contact inquiry from landing page
+      summary: Submit a contact inquiry from the landing page
+      description: |
+        Public endpoint, throttled to 30 requests per minute. Accepts snake_case or
+        camelCase `projectType`. Sends a notification mail on success.
       requestBody:
         required: true
         content:
@@ -497,80 +1417,141 @@ paths:
               properties:
                 name:
                   type: string
+                  maxLength: 255
                 email:
                   type: string
                   format: email
+                  maxLength: 255
                 company:
                   type: string
+                  maxLength: 255
                 phone:
                   type: string
+                  maxLength: 50
                 project_type:
                   type: string
+                  maxLength: 255
                 timeline:
                   type: string
+                  maxLength: 255
                 message:
                   type: string
+                  maxLength: 10000
       responses:
         '201':
-          description: Inquiry stored successfully
+          description: Inquiry stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ContactInquiry'
+        '422':
+          description: Validation error.
+        '429':
+          description: Too many submissions.
     get:
       tags: [CMS Admin]
-      summary: List all contact inquiries
+      summary: List contact inquiries (paginated)
+      description: 'Requires permission `contact-inquiries.view`.'
       security:
         - BearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
         - name: status
           in: query
           schema:
             type: string
+            enum: [new, read]
       responses:
         '200':
-          description: List of contact inquiries
+          description: List of inquiries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInquiries'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
-  /contact-inquiries/{id}:
+  /contact-inquiries/{inquiry}:
+    parameters:
+      - $ref: '#/components/parameters/InquiryId'
     put:
       tags: [CMS Admin]
-      summary: Update inquiry status
+      summary: Update an inquiry status
+      description: 'Requires permission `contact-inquiries.view`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [status]
               properties:
                 status:
                   type: string
-                  enum: [pending, reviewed, responded, archived]
+                  enum: [new, read]
       responses:
         '200':
-          description: Inquiry status updated
-    delete:
+          description: Inquiry updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ContactInquiry'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
       tags: [CMS Admin]
-      summary: Delete contact inquiry
+      summary: Update an inquiry status (alias of PUT)
+      description: 'Requires permission `contact-inquiries.view`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
-        '204':
-          description: Inquiry deleted
+        '200':
+          description: Inquiry updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+    delete:
+      tags: [CMS Admin]
+      summary: Delete an inquiry
+      description: 'Requires permission `contact-inquiries.delete`.'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Inquiry deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
 
   /uploads:
     post:
-      tags: [CMS Admin]
-      summary: Upload file or image
+      tags: [Uploads]
+      summary: Upload an image
+      description: 'Requires permission `uploads.create`. Max 5 MB; jpg, jpeg, png, webp, svg.'
       security:
         - BearerAuth: []
       requestBody:
@@ -579,105 +1560,277 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [image]
               properties:
-                file:
+                image:
                   type: string
                   format: binary
-                folder:
-                  type: string
       responses:
         '201':
-          description: File uploaded, returns path and url
+          description: Image stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      path:
+                        type: string
+                      url:
+                        type: string
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: 'Validation error (wrong MIME type or exceeds size limit).'
 
   /users:
     get:
       tags: [User Management]
-      summary: List users
+      summary: List users (paginated)
+      description: 'Requires permission `users.view`.'
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - name: role
+          in: query
+          description: Filter by role name.
+          schema:
+            type: string
+            enum: [admin, editor, viewer]
       responses:
         '200':
-          description: List of users
+          description: List of users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsers'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
     post:
       tags: [User Management]
-      summary: Create new user
+      summary: Create a user
+      description: 'Requires permission `users.create`.'
       security:
         - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [admin, editor, viewer]
       responses:
         '201':
-          description: User created
+          description: User created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
 
-  /users/{id}:
+  /users/{user}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
     get:
       tags: [User Management]
-      summary: Get user detail
+      summary: Get a user
+      description: 'Requires permission `users.view`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         '200':
-          description: User detail
+          description: User detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
     put:
       tags: [User Management]
-      summary: Update user
+      summary: Update a user
+      description: 'Requires permission `users.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [admin, editor, viewer]
       responses:
         '200':
-          description: User updated
-    delete:
+          description: User updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
+    patch:
       tags: [User Management]
-      summary: Delete user
+      summary: Update a user (alias of PUT)
+      description: 'Requires permission `users.update`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
-        '204':
-          description: User deleted
+        '200':
+          description: User updated.
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+    delete:
+      tags: [User Management]
+      summary: Delete a user
+      description: 'Requires permission `users.delete`. Cannot delete your own account (returns 422).'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Cannot delete own account.
 
-  /users/{id}/roles:
+  /users/{user}/roles:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
     post:
       tags: [User Management]
-      summary: Assign roles to user
+      summary: Assign roles to a user (additive)
+      description: 'Requires permission `users.assign-role`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [admin, editor, viewer]
       responses:
         '200':
-          description: Role assigned
+          description: Roles assigned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.
     delete:
       tags: [User Management]
-      summary: Revoke roles from user
+      summary: Revoke roles from a user
+      description: 'Requires permission `users.assign-role`.'
       security:
         - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [admin, editor, viewer]
       responses:
         '200':
-          description: Role revoked
+          description: Roles revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthenticated.
+        '403':
+          description: Missing permission.
+        '422':
+          description: Validation error.

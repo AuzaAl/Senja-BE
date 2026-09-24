@@ -17,7 +17,7 @@ class ImageUploader
     public const MAX_KILOBYTES = 5120;
 
     /** Ekstensi/format gambar yang diizinkan. */
-    public const ALLOWED_MIME = 'jpg,jpeg,png,webp,svg';
+    public const ALLOWED_MIME = 'jpg,jpeg,png,webp';
 
     /**
      * Aturan validasi upload gambar (dipakai di Form Request / controller).
@@ -32,6 +32,7 @@ class ImageUploader
                 'file',
                 'image',
                 'mimes:'.self::ALLOWED_MIME,
+                'extensions:'.self::ALLOWED_MIME,
                 'max:'.self::MAX_KILOBYTES,
             ],
         ];
@@ -49,7 +50,16 @@ class ImageUploader
         }
 
         $folder = trim($folder, '/');
-        $name = Str::ulid().'.'.strtolower($file->getClientOriginalExtension());
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $allowed = explode(',', self::ALLOWED_MIME);
+
+        if (! in_array($extension, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'image' => 'Format gambar tidak didukung.',
+            ]);
+        }
+
+        $name = Str::ulid().'.'.$extension;
 
         return $file->storeAs($folder, $name, 'public');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Partner;
 
+use App\Support\ImageUploader;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,9 +28,9 @@ abstract class PartnerRequest extends FormRequest
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('partners', 'slug')->ignore($ignoreId), 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'number' => ['nullable', 'string', 'max:10'],
             'category' => ['nullable', 'string', 'max:255'],
-            'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'logo' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'logo_path' => ['nullable', 'string', 'max:2048'],
-            'hero_image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'hero_image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'hero_image_path' => ['nullable', 'string', 'max:2048'],
             'description' => ['nullable', 'string', 'max:5000'],
             'capabilities' => ['nullable', 'array', 'max:30'],
@@ -42,7 +43,7 @@ abstract class PartnerRequest extends FormRequest
 
             'gallery' => ['nullable', 'array', 'max:30'],
             'gallery.*' => [$this->imageOrPathRule()],
-            'gallery.*.image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'gallery.*.image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'gallery.*.image_path' => ['nullable', 'string', 'max:2048'],
             'gallery.*.alt' => ['nullable', 'string', 'max:255'],
             'gallery.*.position' => ['nullable', 'string', 'max:255'],
@@ -53,7 +54,7 @@ abstract class PartnerRequest extends FormRequest
             'products.*.name' => ['required_with:products', 'string', 'max:255'],
             'products.*.category' => ['nullable', 'string', 'max:255'],
             'products.*.description' => ['nullable', 'string', 'max:5000'],
-            'products.*.image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+            'products.*.image' => ['nullable', 'file', 'image', 'mimes:'.ImageUploader::ALLOWED_MIME, 'max:5120'],
             'products.*.image_path' => ['nullable', 'string', 'max:2048'],
             'products.*.link' => ['nullable', 'string', 'max:2048', 'url'],
             'products.*.sort_order' => ['nullable', 'integer', 'min:0'],
